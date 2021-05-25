@@ -10,6 +10,18 @@
           Helvetica, Arial, sans-serif;
       }
 
+      main {
+        display: flex;
+      }
+
+      .container {
+        width: 80%;
+      }
+
+      #online-members {
+        display: flex;
+      }
+
       #form {
         background: rgba(0, 0, 0, 0.15);
         padding: 0.25rem;
@@ -21,6 +33,12 @@
         height: 3rem;
         box-sizing: border-box;
         backdrop-filter: blur(10px);
+      }
+      .user {
+        width: 15%;
+        border: none;
+        border-radius: 2rem;
+        margin: 0.25rem;
       }
       #input {
         border: none;
@@ -56,35 +74,107 @@
     </style>
   </head>
   <body>
-    <ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" />
-      <button>Send</button>
-    </form>
+    <main>
+      <div class="container">
+        <h2>メッセージ</h2>
+        <ul id="messages"></ul>
+        <div class="typing-message"></div>
+        <form id="form" action="">
+          <input
+            class="user"
+            type="text"
+            placeholder="送りたいユーザー名"
+            value="全員"
+          />
+          <input id="input" autocomplete="off" />
+          <button>Send</button>
+        </form>
+      </div>
+      <div class="online">
+        <h2>オンライン中</h2>
+        <ul class="online-members"></ul>
+      </div>
+    </main>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
 
+      const onlineMembers = document.querySelector(".online-members");
       const messages = document.getElementById("messages");
       const form = document.getElementById("form");
       const input = document.getElementById("input");
+      const toUser = document.querySelector(".user");
+      const typingMessage = document.querySelector(".typing-message");
+
+      const cache = []; // 一時的な入力履歴
+      const currentUser = prompt("ユーザー名を入力してください");
+      let onlineUsers = [];
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
-        if (input.value) {
-          socket.emit("chat message", input.value);
-          input.value = "";
+        if (input.value.trim() && isSendMessage(input.value)) {
+          if (onlineUsers.includes(toUser.value)) {
+            socket.emit("private message", {
+              from: currentUser,
+              to: toUser.value,
+              message: input.value,
+            });
+            cache.push(input.value); // 10秒保存
+            input.value = "";
+          } else if (toUser.value === "全員") {
+            socket.emit("chat message", input.value);
+            cache.push(input.value); // 10秒保存
+            input.value = "";
+          } else {
+            alert("全員かユーザ名を指定してください");
+          }
         }
+        setTimeout(() => {
+          cache.shift();
+        }, 10000);
       });
 
       socket.on("chat message", (msg) => {
-        const item = document.createElement("li");
-        item.textContent = msg;
-
-        messages.appendChild(item);
+        const listItem = document.createElement("li");
+        listItem.textContent = msg;
+        messages.appendChild(listItem);
         window.scrollTo(0, document.body.scrollHeight);
       });
+
+      socket.on("connect", () => {
+        socket.emit("enter room", currentUser);
+      });
+
+      socket.on("start typing", (typingUser) => {
+        typingMessage.innerHTML += `<div class="msg">${typingUser}が入力中</div>`;
+      });
+
+      socket.on("stop typing", () => {
+        typingMessage.innerHTML = "";
+      });
+
+      input.addEventListener("input", () => {
+        socket.emit("start typing");
+      });
+
+      socket.on("users count", (users) => {
+        onlineMembers.innerHTML = "";
+        onlineUsers = [];
+        for (let id in users) {
+          onlineMembers.innerHTML += `<li>${users[id]}</li>`;
+          onlineUsers.push(users[id]);
+        }
+      });
+
+      const isSendMessage = (message) => {
+        for (let cacheMessage of cache) {
+          if (message === cacheMessage) {
+            return confirm("同じ文字を送信しますか？");
+          }
+        }
+        return true;
+      };
     </script>
   </body>
 </html>
