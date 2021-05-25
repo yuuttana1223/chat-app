@@ -30,6 +30,7 @@ io.on("connection", (socket) => {
       to = data.to,
       message = data.message;
     if (connectedUsers.hasOwnProperty(to)) {
+      connectedUsers[from].emit("chat message", `DM(${from}): ${message}`);
       connectedUsers[to].emit("chat message", `DM(${from}): ${message}`);
     }
   });
