@@ -60,10 +60,6 @@ io.on("connection", (socket) => {
       }
     }, 3000);
   });
-
-  socket.on("image", (imageData) => {
-    socket.broadcast.emit("image", imageData);
-  });
 });
 
 server.listen(3000, () => {

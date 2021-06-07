@@ -74,13 +74,6 @@
     </style>
   </head>
   <body>
-    <div class="">
-      <form action="">
-        <input type="file" name="" id="file" />
-      </form>
-      <div id="display"></div>
-    </div>
-
     <main>
       <div class="container">
         <h2>メッセージ</h2>
@@ -190,40 +183,6 @@
         messages.appendChild(listItem);
         window.scrollTo(0, document.body.scrollHeight);
       };
-
-      // 画像操作
-      socket.on("image", (imageData) => {
-        if (imageData) {
-          // 画面上に何かを描く
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          const img = new Image();
-          img.src = imageData;
-          img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            // 左上から描く
-            ctx.drawImage(img, 0, 0);
-            document.body.appendChild(canvas);
-          };
-        }
-      });
-
-      const sendImage = (event) => {
-        console.log("change!");
-        console.log(event.target.files);
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          socket.emit("image", event.target.result);
-        };
-        // Base64になる
-        reader.readAsDataURL(file);
-      };
-
-      const file = document.getElementById("file");
-      //  <input>, <select>, <textarea> 要素において、ユーザーによる要素の値の変更が確定したときに発生
-      file.addEventListener("change", sendImage, false);
     </script>
   </body>
 </html>
