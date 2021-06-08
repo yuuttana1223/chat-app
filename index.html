@@ -71,22 +71,21 @@
       #messages > li:nth-child(odd) {
         background: #efefef;
       }
+
+      canvas {
+        display: block;
+        max-width: 85%;
+      }
     </style>
   </head>
   <body>
-    <div class="">
-      <form action="">
-        <input type="file" name="" id="file" />
-      </form>
-      <div id="display"></div>
-    </div>
-
     <main>
       <div class="container">
         <h2>メッセージ</h2>
         <ul id="messages"></ul>
         <div class="typing-message"></div>
         <form id="form" action="">
+          <input type="file" name="file" class="file" />
           <input
             class="user"
             type="text"
@@ -109,6 +108,7 @@
 
       const messages = document.getElementById("messages");
       const form = document.getElementById("form");
+      const file = document.querySelector(".file");
       const input = document.getElementById("input");
       const toUser = document.querySelector(".user");
       const typingMessage = document.querySelector(".typing-message");
@@ -121,6 +121,7 @@
 
       let onlineUsers = [];
 
+      // 入力文字を送信したとき
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value.trim() && isSendMessage(input.value)) {
@@ -143,6 +144,21 @@
         setTimeout(() => {
           cache.shift();
         }, 10000);
+      });
+
+      // 画像を送信したとき
+      form.addEventListener("submit", (e) => {
+        const file = e.target[0].files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const imageData = e.target.result;
+            drawCanvas(imageData);
+            socket.emit("image", imageData);
+          };
+          // Base64
+          reader.readAsDataURL(file);
+        }
       });
 
       socket.on("chat message", (message) => {
@@ -169,14 +185,40 @@
         const onlineMembers = document.querySelector(".online-members");
         onlineMembers.innerHTML = "";
         onlineUsers = [];
-        for (let id in users) {
+        for (const id in users) {
           onlineMembers.innerHTML += `<li>${users[id]}</li>`;
           onlineUsers.push(users[id]);
         }
       });
 
+      // 画像操作
+      socket.on("image", (imageData) => {
+        drawCanvas(imageData);
+      });
+
+      // 以下 自作関数
+
+      const drawCanvas = (imageData) => {
+        if (imageData) {
+          // 画面上に何かを描く
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const img = new Image();
+          img.src = imageData;
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            // 左上から描く
+            ctx.drawImage(img, 0, 0);
+            const listItem = document.createElement("li");
+            messages.appendChild(canvas);
+            window.scrollTo(0, document.body.scrollHeight);
+          };
+        }
+      };
+
       const isSendMessage = (message) => {
-        for (let cacheMessage of cache) {
+        for (const cacheMessage of cache) {
           if (message === cacheMessage) {
             return confirm("同じ文字を送信しますか？");
           }
@@ -190,40 +232,6 @@
         messages.appendChild(listItem);
         window.scrollTo(0, document.body.scrollHeight);
       };
-
-      // 画像操作
-      socket.on("image", (imageData) => {
-        if (imageData) {
-          // 画面上に何かを描く
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          const img = new Image();
-          img.src = imageData;
-          img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            // 左上から描く
-            ctx.drawImage(img, 0, 0);
-            document.body.appendChild(canvas);
-          };
-        }
-      });
-
-      const sendImage = (event) => {
-        console.log("change!");
-        console.log(event.target.files);
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          socket.emit("image", event.target.result);
-        };
-        // Base64になる
-        reader.readAsDataURL(file);
-      };
-
-      const file = document.getElementById("file");
-      //  <input>, <select>, <textarea> 要素において、ユーザーによる要素の値の変更が確定したときに発生
-      file.addEventListener("change", sendImage, false);
     </script>
   </body>
 </html>
