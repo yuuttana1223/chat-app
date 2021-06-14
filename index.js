@@ -8,6 +8,8 @@ const io = new Server(server);
 const userHash = {}; // 参加中のユーザの名前を保持
 const connectedUsers = {}; // private messageに使用
 
+app.use(express.static("assets"));
+
 app.get("/", (req, res) => {
   res.sendFile(`${__dirname}/index.html`);
 });
@@ -37,6 +39,17 @@ io.on("connection", (socket) => {
         `DM (${from} -> ${to}): ${message}`
       );
     }
+  });
+
+  socket.on("sticker", (imageId) => {
+    const fs = require("fs");
+    const extension = imageId.split(".")[1];
+    console.log(extension);
+    fs.readFile(`assets/sticker/${imageId}`, "base64", (err, data) => {
+      if (data) {
+        io.emit("sticker", `data:image/${extension};base64, ${data}`);
+      }
+    });
   });
 
   socket.on("enter room", (userName) => {
